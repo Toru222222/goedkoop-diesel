@@ -43,7 +43,13 @@ async function main() {
     try {
       const res = await fetch(s.url, { headers: { 'User-Agent': 'goedkoop-diesel (github.com/Toru222222/goedkoop-diesel)' } });
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      const found = parseDieselPrice(await res.text(), s.min, s.max);
+      const html = await res.text();
+      if (process.env.DEBUG) {
+        const plain = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' | ').replace(/\s+/g, ' ');
+        for (const m of plain.matchAll(/diesel/gi)) console.log('TEXT>', plain.slice(Math.max(0, m.index - 150), m.index + 200));
+        for (const m of html.matchAll(/diesel/gi)) console.log('RAW>', html.slice(Math.max(0, m.index - 100), m.index + 160).replace(/\s+/g, ' '));
+      }
+      const found = parseDieselPrice(html, s.min, s.max);
       if (!found) throw new Error('geen dieselprijs gevonden op de pagina');
       prices[`${s.country}:${s.brand}`] = {
         country: s.country, brand: s.brand, currency: s.currency, fuel: 'diesel',

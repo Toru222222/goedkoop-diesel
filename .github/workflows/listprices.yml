@@ -17,6 +17,8 @@ jobs:
         with:
           node-version: 22
       - run: node scripts/update-listprices.mjs
+        env:
+          DEBUG: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
       - name: Wijzigingen opslaan
         run: |
           if git diff --quiet -- listprices.json; then exit 0; fi
