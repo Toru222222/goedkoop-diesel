@@ -27,8 +27,10 @@ export function countryInfo(code) {
 
 export async function geocode(query) {
   const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=' + encodeURIComponent(query);
-  const res = await fetch(url, { headers: { 'Accept-Language': 'nl' } });
-  if (!res.ok) throw new Error('Zoeken mislukt (' + res.status + ')');
+  let res;
+  try { res = await fetch(url, { headers: { 'Accept-Language': 'nl' } }); }
+  catch { throw new Error('Plaats zoeken mislukt: geen verbinding met de zoekdienst.'); }
+  if (!res.ok) throw new Error('Plaats zoeken mislukt (' + res.status + ')');
   const [hit] = await res.json();
   if (!hit) return null;
   return {
@@ -98,7 +100,12 @@ export async function fetchStations(lat, lon, radius) {
     j = await queryOverpass(q);
     try { localStorage.setItem(STATION_CACHE_KEY, JSON.stringify({ key: cacheKey, data: j })); } catch {}
   } catch (err) {
-    // Lukt geen enkele server, gebruik dan de laatst opgehaalde stations voor deze plek.
+    // Lukt geen enkele Overpass-server: probeer Nominatim, en anders de laatst
+    // opgehaalde stations voor deze plek.
+    try {
+      const viaSearch = await stationsViaNominatim(lat, lon, radius);
+      if (viaSearch.length) return viaSearch;
+    } catch (e2) { console.warn(e2); }
     let cached = null;
     try { cached = JSON.parse(localStorage.getItem(STATION_CACHE_KEY)); } catch {}
     if (cached?.key !== cacheKey) throw err;
@@ -120,6 +127,27 @@ export async function fetchStations(lat, lon, radius) {
       };
     })
     .filter(Boolean);
+}
+
+// Reservebron: Nominatim kan ook op voorzieningstype zoeken binnen een kader.
+async function stationsViaNominatim(lat, lon, radius) {
+  const dLat = radius / 111320, dLon = radius / (111320 * Math.cos(lat * Math.PI / 180));
+  const box = [lon - dLon, lat + dLat, lon + dLon, lat - dLat].map(v => v.toFixed(5)).join(',');
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&amenity=fuel&bounded=1&limit=50&addressdetails=1&viewbox=${box}`;
+  const res = await fetch(url, { headers: { 'Accept-Language': 'nl' } });
+  if (!res.ok) throw new Error('Nominatim HTTP ' + res.status);
+  const hits = await res.json();
+  return hits.map(h => {
+    const a = h.address || {};
+    const street = [a.road, a.house_number].filter(Boolean).join(' ');
+    return {
+      id: `osm:${h.osm_type}/${h.osm_id}`,
+      name: h.name || 'Tankstation',
+      brand: '',
+      address: [street, a.city || a.town || a.village].filter(Boolean).join(', '),
+      lat: +h.lat, lon: +h.lon,
+    };
+  });
 }
 
 // ---- Officiële prijsbronnen per land ----

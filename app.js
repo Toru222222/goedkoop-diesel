@@ -1,6 +1,6 @@
-import { countryInfo, geocode, reverseGeocode, fetchStations, fetchOfficialPrices } from './providers.js';
-import { latestReports, addReport, detectMode } from './store.js';
-import { readImageText, extractPrices } from './ocr.js';
+import { countryInfo, geocode, reverseGeocode, fetchStations, fetchOfficialPrices } from './providers.js?v=3';
+import { latestReports, addReport, detectMode } from './store.js?v=3';
+import { readImageText, extractPrices } from './ocr.js?v=3';
 
 const $ = id => document.getElementById(id);
 const MAX_AGE_DAYS = 14; // oudere meldingen tellen niet mee
