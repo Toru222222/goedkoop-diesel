@@ -19,6 +19,8 @@ Web-app voor telefoon en computer die tankstations rond je locatie toont, gesort
 | Duitsland | Tankerkönig (live, gratis API-sleutel) | Gebouwd, niet live getest |
 | Frankrijk | prix-carburants, open data van de overheid (live) | Gebouwd, niet live getest |
 
+**Richtprijs in Zweden**: een GitHub Actions-taak (`.github/workflows/listprices.yml`) haalt drie keer per dag de landelijke dieselprijs van St1 op en schrijft die naar `listprices.json`. St1-stations zonder melding tonen die als richtprijs (≈), en bovenaan staat hij als referentie. Circle K en Preem publiceren sinds 2026 geen prijzen meer voor particulieren.
+
 **Zweden** heeft geen openbare prijsdata per station. Bensinpriser.nu werkt ook met meldingen van gebruikers, en ketens als Circle K en Preem publiceren alleen een landelijke "listpris", die meestal hoger ligt dan de prijs aan de pomp. Daarom vertrouwt de app in Zweden op meldingen. Betaalde bronnen met echte pompprijzen bestaan wel (TomTom Fuel Prices, HERE Fuel Prices), die kun je later als provider toevoegen.
 
 Een land of bron toevoegen: één regel in `COUNTRIES` in `providers.js`, plus eventueel een functie in `providers`.
