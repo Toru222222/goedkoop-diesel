@@ -14,7 +14,7 @@ export const SOURCES = [
   { country: 'SE', brand: 'Preem', currency: 'SEK', url: 'https://www.preem.se/foretag/listpriser/',
     label: /Evolution Diesel/i, min: 10, max: 40 },
   { country: 'SE', brand: 'OKQ8', currency: 'SEK', url: 'https://www.okq8.se/foretag/priser/',
-    label: /(?<![A-Za-z0-9+])Diesel(?!\s*(?:HVO|Bio))/i, min: 10, max: 40 },
+    label: /GoEasy Diesel(?!\s*(?:Extra|\())/i, min: 10, max: 40 },
 ];
 
 const MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, maj: 5, jun: 6, jul: 7, aug: 8, sep: 9, okt: 10, nov: 11, dec: 12 };
@@ -47,7 +47,7 @@ export function parseDieselPrice(html, min, max, label = /(?<![A-Za-z0-9+])Diese
       const p = after.match(/^[^0-9]{0,80}?(\d{2}[,.]\d{2,3})(?!\d)/);
       if (!p) continue;
       const v = parseFloat(p[1].replace(',', '.'));
-      if (v >= min && v <= max) return { price: v, date: newestDate(text) };
+      if (v >= min && v <= max) return { price: v, date: newestDate(source) };
     }
   }
   return null;
