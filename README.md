@@ -42,12 +42,23 @@ Zonder server (bijvoorbeeld de bestanden op een gewone webhost zetten) werkt de 
 **Duitsland**: vraag een gratis sleutel aan op https://creativecommons.tankerkoenig.de en zet hem in de browserconsole met
 `localStorage.setItem('diesel-settings', JSON.stringify({tankerkoenigKey: 'JOUW-SLEUTEL'}))`.
 
+## Prijzen delen via Supabase (gratis)
+
+1. Maak een account op https://supabase.com (inloggen met GitHub kan) en klik **New project**. Kies regio Stockholm (eu-north-1) als die er is.
+2. Open **SQL Editor**, plak de inhoud van `supabase.sql` en klik **Run**.
+3. Ga naar **Project Settings > API** (of de knop **Connect**) en kopieer de **Project URL** en de **publishable key** (of de **anon public** key).
+4. Zet die twee in `config.js`. Die sleutel mag openbaar zijn: de database staat alleen lezen en toevoegen toe, niet wijzigen of verwijderen.
+
+Een gratis Supabase-project wordt gepauzeerd na een week zonder gebruik; dan zet je hem in het dashboard weer aan. Meldingen blijven altijd ook op je eigen telefoon bewaard.
+
 ## Bestanden
 
 - `index.html`, `styles.css`: de pagina
 - `app.js`: locatie, laden, sorteren, weergave, melden
 - `providers.js`: landen, OpenStreetMap, officiële prijsbronnen
-- `store.js`: meldingen opslaan (server of op het apparaat)
+- `store.js`: meldingen opslaan (Supabase, server of op het apparaat)
+- `config.js`: gegevens van de gedeelde database
+- `supabase.sql`: tabel en toegangsregels voor Supabase
 - `ocr.js`: prijsbord scannen en prijzen uit tekst halen
 - `server.js`: kleine server die de app serveert en meldingen bewaart
 

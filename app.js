@@ -1,6 +1,6 @@
-import { countryInfo, geocode, reverseGeocode, fetchStations, fetchOfficialPrices } from './providers.js?v=4';
-import { latestReports, addReport, detectMode } from './store.js?v=4';
-import { readImageText, extractPrices } from './ocr.js?v=4';
+import { countryInfo, geocode, reverseGeocode, fetchStations, fetchOfficialPrices } from './providers.js?v=5';
+import { latestReports, addReport, detectMode } from './store.js?v=5';
+import { readImageText, extractPrices } from './ocr.js?v=5';
 
 const $ = id => document.getElementById(id);
 const MAX_AGE_DAYS = 14; // oudere meldingen tellen niet mee
@@ -280,13 +280,13 @@ async function onSave(e) {
   }
   $('report-save').disabled = true;
   try {
-    await addReport({
+    const { shareError } = await addReport({
       stationId: s.id, name: s.name, lat: s.lat, lon: s.lon,
       country: state.country, currency: c.currency, fuel: 'diesel', price,
     });
     $('report-dialog').close();
     await load();
-    setStatus(`Bedankt! Prijs voor ${s.name} opgeslagen.`);
+    setStatus(shareError || `Bedankt! Prijs voor ${s.name} opgeslagen.`, !!shareError);
   } catch (err) {
     $('scan-status').textContent = err.message;
   } finally {
@@ -304,7 +304,7 @@ $('report-form').addEventListener('submit', onSave);
 $('report-cancel').addEventListener('click', () => $('report-dialog').close());
 
 detectMode().then(m => {
-  $('store-mode').textContent = m === 'server'
+  $('store-mode').textContent = m !== 'local'
     ? 'Meldingen worden gedeeld met alle gebruikers.'
     : 'Meldingen worden alleen op dit apparaat bewaard.';
 });
