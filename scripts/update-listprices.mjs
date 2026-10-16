@@ -24,8 +24,14 @@ export function parseDieselPrice(html, min, max) {
   for (const m of candidates) {
     const v = parseFloat(m[1].replace(',', '.'));
     if (v >= min && v <= max) {
-      const d = text.match(/(\d{1,2})\s+(jan|feb|mar|apr|maj|jun|jul|aug|sep|okt|nov|dec)[a-z]*\.?\s+(20\d{2})/i);
-      const date = d ? `${d[3]}-${String(MONTHS[d[2].toLowerCase()]).padStart(2, '0')}-${d[1].padStart(2, '0')}` : null;
+      // De pagina noemt ook andere data (bijv. een belastingwijziging); de prijsdatum is de nieuwste
+      // die niet in de toekomst ligt.
+      const today = new Date().toISOString().slice(0, 10);
+      const dates = [...text.matchAll(/(\d{1,2})\s+(jan|feb|mar|apr|maj|jun|jul|aug|sep|okt|nov|dec)[a-z]*\.?\s+(20\d{2})/gi)]
+        .map(d => `${d[3]}-${String(MONTHS[d[2].toLowerCase()]).padStart(2, '0')}-${d[1].padStart(2, '0')}`)
+        .filter(d => d <= today)
+        .sort();
+      const date = dates.at(-1) || null;
       return { price: v, date };
     }
   }
