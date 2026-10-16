@@ -1,5 +1,4 @@
 // Gedeelde database voor prijsmeldingen (Supabase, gratis).
-// Vul hier de Project URL en de publishable (of anon) key in, zie README.
 // Deze sleutel mag openbaar zijn: de database staat alleen lezen en toevoegen toe.
-export const SUPABASE_URL = '';
-export const SUPABASE_KEY = '';
+export const SUPABASE_URL = 'https://wkaejoindfolmfnkefqy.supabase.co';
+export const SUPABASE_KEY = 'sb_publishable_D_ctLVyBFqU_o6br5odxhw_0jXoTX5D';

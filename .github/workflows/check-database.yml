@@ -1,0 +1,26 @@
+name: Database controleren
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lezen, schrijven en CORS testen
+        run: |
+          URL=$(sed -n "s/.*SUPABASE_URL = '\(.*\)'.*/\1/p" config.js)
+          KEY=$(sed -n "s/.*SUPABASE_KEY = '\(.*\)'.*/\1/p" config.js)
+          echo "== lezen"
+          curl -sS -i "$URL/rest/v1/reports?select=id,station_id,price,created_at&limit=3" -H "apikey: $KEY" -H "Origin: https://toru222222.github.io" | grep -iE "^HTTP|access-control-allow-origin|^\[|^\{"
+          echo; echo "== schrijven (testmelding op 0,0, verschijnt bij geen enkel station)"
+          curl -sS -i -X POST "$URL/rest/v1/reports" -H "apikey: $KEY" -H "Content-Type: application/json" -H "Prefer: return=minimal" \
+            -d '{"station_id":"test:controle","name":"controle","lat":0,"lon":0,"country":"","currency":"","fuel":"diesel","price":1}' | grep -iE "^HTTP|message"
+          echo; echo "== ongeldige prijs moet geweigerd worden"
+          curl -sS -i -X POST "$URL/rest/v1/reports" -H "apikey: $KEY" -H "Content-Type: application/json" \
+            -d '{"station_id":"test:controle","lat":0,"lon":0,"price":99999}' | grep -iE "^HTTP"
+          echo; echo "== verwijderen moet geweigerd/genegeerd worden"
+          curl -sS -i -X DELETE "$URL/rest/v1/reports?station_id=eq.test:controle" -H "apikey: $KEY" -H "Prefer: return=representation" | grep -iE "^HTTP|^\["
+          echo; echo "== teruglezen"
+          curl -sS "$URL/rest/v1/reports?select=station_id,price,created_at&station_id=eq.test:controle" -H "apikey: $KEY"
