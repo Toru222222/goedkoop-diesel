@@ -52,17 +52,58 @@ export async function reverseGeocode(lat, lon) {
 
 // ---- Stations (OpenStreetMap Overpass) ----
 
-const OVERPASS = 'https://overpass-api.de/api/interpreter';
+// De openbare Overpass-servers zijn soms overbelast of weigeren verzoeken,
+// dus we proberen ze om de beurt en onthouden welke het laatst werkte.
+const OVERPASS_SERVERS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+];
+const STATION_CACHE_KEY = 'diesel-stations-cache-v1';
+
+async function queryOverpass(q) {
+  let preferred = 0;
+  try { preferred = +localStorage.getItem('diesel-overpass') || 0; } catch {}
+  const order = [...OVERPASS_SERVERS.keys()].sort((a, b) => (b === preferred) - (a === preferred));
+  const errors = [];
+  for (const i of order) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 20000);
+    try {
+      const res = await fetch(OVERPASS_SERVERS[i], {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'data=' + encodeURIComponent(q),
+        signal: ctrl.signal,
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const j = await res.json();
+      if (!Array.isArray(j.elements)) throw new Error('onverwacht antwoord');
+      try { localStorage.setItem('diesel-overpass', String(i)); } catch {}
+      return j;
+    } catch (err) {
+      errors.push(`${new URL(OVERPASS_SERVERS[i]).host}: ${err.name === 'AbortError' ? 'time-out' : err.message}`);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  throw new Error('Kaartservers niet bereikbaar (' + errors.join('; ') + ')');
+}
 
 export async function fetchStations(lat, lon, radius) {
   const q = `[out:json][timeout:25];nwr["amenity"="fuel"](around:${radius},${lat},${lon});out center tags;`;
-  const res = await fetch(OVERPASS, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: 'data=' + encodeURIComponent(q),
-  });
-  if (!res.ok) throw new Error('Stations ophalen mislukt (' + res.status + ')');
-  const j = await res.json();
+  const cacheKey = `${lat.toFixed(3)},${lon.toFixed(3)},${radius}`;
+  let j;
+  try {
+    j = await queryOverpass(q);
+    try { localStorage.setItem(STATION_CACHE_KEY, JSON.stringify({ key: cacheKey, data: j })); } catch {}
+  } catch (err) {
+    // Lukt geen enkele server, gebruik dan de laatst opgehaalde stations voor deze plek.
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem(STATION_CACHE_KEY)); } catch {}
+    if (cached?.key !== cacheKey) throw err;
+    j = cached.data;
+  }
   return j.elements
     .map(el => {
       const t = el.tags || {};
