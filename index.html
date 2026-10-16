@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f766e">
+  <title>Goedkoop Diesel</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <h1>⛽ Goedkoop Diesel</h1>
+    <p class="sub">Tankstations in je buurt, gesorteerd op dieselprijs</p>
+  </header>
+
+  <main>
+    <section class="controls card">
+      <div class="row">
+        <button id="btn-locate" class="primary">📍 Mijn locatie</button>
+        <form id="search-form" class="search">
+          <input id="search-input" type="search" placeholder="Of zoek een plaats, bijv. Charlottenberg" autocomplete="off">
+          <button type="submit">Zoek</button>
+        </form>
+      </div>
+      <div class="row small">
+        <label>Straal
+          <select id="radius">
+            <option value="5000">5 km</option>
+            <option value="10000">10 km</option>
+            <option value="25000" selected>25 km</option>
+            <option value="50000">50 km</option>
+          </select>
+        </label>
+        <span id="place" class="muted"></span>
+      </div>
+    </section>
+
+    <div id="status" class="status" role="status"></div>
+
+    <section id="source-note" class="note" hidden></section>
+
+    <section id="best" class="best card" hidden></section>
+
+    <ol id="list" class="list"></ol>
+  </main>
+
+  <footer class="foot muted">
+    Stations: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>-bijdragers.
+    Prijzen: gemeld door gebruikers, of open overheidsdata waar een land die heeft.
+    <span id="store-mode"></span>
+  </footer>
+
+  <!-- Prijs melden / scannen -->
+  <dialog id="report-dialog">
+    <form id="report-form" method="dialog">
+      <h2>Dieselprijs melden</h2>
+      <p id="report-station" class="muted"></p>
+
+      <label class="scan">
+        <span class="btn">📷 Scan prijsbord</span>
+        <input id="scan-input" type="file" accept="image/*" capture="environment" hidden>
+      </label>
+      <div id="scan-status" class="muted small"></div>
+      <div id="scan-candidates" class="chips"></div>
+
+      <label>Prijs per liter (<span id="report-currency"></span>)
+        <input id="report-price" type="text" inputmode="decimal" placeholder="bijv. 22,49" required>
+      </label>
+      <div class="row end">
+        <button type="button" id="report-cancel">Annuleren</button>
+        <button type="submit" id="report-save" class="primary">Opslaan</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
