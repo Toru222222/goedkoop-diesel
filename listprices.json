@@ -1,0 +1,15 @@
+{
+  "updatedAt": "2026-10-16T09:45:00.000Z",
+  "prices": {
+    "SE:St1": {
+      "country": "SE",
+      "brand": "St1",
+      "currency": "SEK",
+      "fuel": "diesel",
+      "price": 22.94,
+      "date": "2026-10-15",
+      "source": "https://st1.se/foretag/listpris",
+      "fetchedAt": "2026-10-16T09:45:00.000Z"
+    }
+  }
+}

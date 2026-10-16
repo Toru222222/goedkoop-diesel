@@ -1,6 +1,6 @@
-import { countryInfo, geocode, reverseGeocode, fetchStations, fetchOfficialPrices } from './providers.js?v=3';
-import { latestReports, addReport, detectMode } from './store.js?v=3';
-import { readImageText, extractPrices } from './ocr.js?v=3';
+import { countryInfo, geocode, reverseGeocode, fetchStations, fetchOfficialPrices } from './providers.js?v=4';
+import { latestReports, addReport, detectMode } from './store.js?v=4';
+import { readImageText, extractPrices } from './ocr.js?v=4';
 
 const $ = id => document.getElementById(id);
 const MAX_AGE_DAYS = 14; // oudere meldingen tellen niet mee
@@ -103,13 +103,16 @@ async function load() {
   $('source-note').textContent = c.note || '';
 
   try {
-    const [osm, official, reports] = await Promise.all([
+    const [osm, official, reports, listPrices] = await Promise.all([
       fetchStations(lat, lon, radius),
       fetchOfficialPrices(country, lat, lon, radius, state.settings).catch(err => {
         console.warn(err); return [];
       }),
       latestReports(lat, lon, radius),
+      fetchListPrices(),
     ]);
+    const chainPrices = Object.values(listPrices).filter(p => p.country === country);
+    showListPriceNote(c, chainPrices);
 
     // Officiële stations hebben voorrang; OSM-stations op dezelfde plek vallen weg.
     const merged = [...official];
@@ -124,9 +127,12 @@ async function load() {
       if (r && r.ts > cutoff && (!s.price || r.ts > s.ts)) {
         s.price = r.price; s.ts = r.ts; s.source = 'melding';
       }
+      if (s.price == null) s.listPrice = chainPrices.find(p => matchesBrand(s, p.brand));
     }
-    merged.sort((a, b) =>
-      (a.price == null) - (b.price == null) || (a.price ?? 0) - (b.price ?? 0) || a.dist - b.dist);
+    // Eerst echte pompprijzen, dan richtprijzen van de keten, dan stations zonder prijs.
+    const rank = s => s.price != null ? 0 : s.listPrice ? 1 : 2;
+    const value = s => s.price ?? s.listPrice?.price ?? 0;
+    merged.sort((a, b) => rank(a) - rank(b) || value(a) - value(b) || a.dist - b.dist);
 
     state.stations = merged;
     render();
@@ -138,6 +144,34 @@ async function load() {
     console.error(err);
     setStatus(err.message || 'Er ging iets mis bij het laden.', true);
   }
+}
+
+// ---- Richtprijzen van ketens (listprices.json, dagelijks bijgewerkt) ----
+
+async function fetchListPrices() {
+  try {
+    const res = await fetch('listprices.json', { cache: 'no-store' });
+    return res.ok ? (await res.json()).prices || {} : {};
+  } catch { return {}; }
+}
+
+function matchesBrand(station, brand) {
+  const re = new RegExp(`(^|[^a-z0-9])${brand.toLowerCase()}([^a-z0-9]|$)`);
+  return re.test((station.brand || '').toLowerCase()) || re.test((station.name || '').toLowerCase());
+}
+
+function shortDate(iso) {
+  if (!iso) return '';
+  return new Date(iso + 'T12:00:00').toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+}
+
+function showListPriceNote(c, chainPrices) {
+  if (!chainPrices.length) return;
+  const parts = chainPrices.map(p => `${p.brand} ${formatPrice(p.price, state.country)}${p.date ? ' (' + shortDate(p.date) + ')' : ''}`);
+  $('source-note').hidden = false;
+  $('source-note').textContent = [c.note,
+    `Landelijke listpris diesel: ${parts.join(', ')}. Aan de pomp is het meestal 0,5 tot 1,5 kr goedkoper.`]
+    .filter(Boolean).join(' ');
 }
 
 // ---- Weergave ----
@@ -180,6 +214,10 @@ function render() {
       price.textContent = formatPrice(s.price, country);
       price.classList.toggle('cheapest', s === cheapest);
       li.querySelector('.age').textContent = `${timeAgo(s.ts)} · ${s.source}`;
+    } else if (s.listPrice) {
+      price.textContent = '≈ ' + formatPrice(s.listPrice.price, country);
+      price.classList.add('list');
+      li.querySelector('.age').textContent = `listpris ${s.listPrice.brand}${s.listPrice.date ? ' · ' + shortDate(s.listPrice.date) : ''}`;
     } else {
       price.textContent = 'geen prijs';
       price.classList.add('none');

@@ -11,8 +11,8 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = process.env.DATA_FILE || path.join(ROOT, 'data', 'reports.json');
 const PORT = +process.env.PORT || 8080;
 const MAX_REPORTS = 50000;
-const STATIC = new Set(['index.html', 'styles.css', 'app.js', 'providers.js', 'store.js', 'ocr.js', 'sw.js', 'manifest.webmanifest', 'icon.svg']);
-const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml' };
+const STATIC = new Set(['index.html', 'styles.css', 'app.js', 'providers.js', 'store.js', 'ocr.js', 'sw.js', 'manifest.webmanifest', 'icon.svg', 'listprices.json']);
+const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.json': 'application/json' };
 
 let reports = [];
 try { reports = JSON.parse(await fs.readFile(DATA_FILE, 'utf8')); } catch {}
