@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-10-16T09:45:16.019Z",
+  "updatedAt": "2026-10-16T09:46:55.847Z",
   "prices": {
     "SE:St1": {
       "country": "SE",
@@ -7,9 +7,9 @@
       "currency": "SEK",
       "fuel": "diesel",
       "price": 23.14,
-      "date": "2026-07-01",
+      "date": "2026-10-16",
       "source": "https://st1.se/foretag/listpris",
-      "fetchedAt": "2026-10-16T09:45:16.018Z"
+      "fetchedAt": "2026-10-16T09:46:55.847Z"
     }
   }
 }
