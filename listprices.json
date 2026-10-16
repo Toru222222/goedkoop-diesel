@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-10-16T09:44:09.174Z",
+  "updatedAt": "2026-10-16T09:45:16.019Z",
   "prices": {
     "SE:St1": {
       "country": "SE",
@@ -9,7 +9,7 @@
       "price": 23.14,
       "date": "2026-07-01",
       "source": "https://st1.se/foretag/listpris",
-      "fetchedAt": "2026-10-16T09:44:09.174Z"
+      "fetchedAt": "2026-10-16T09:45:16.018Z"
     }
   }
 }
