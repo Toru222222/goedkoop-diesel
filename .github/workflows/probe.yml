@@ -8,6 +8,10 @@ on:
       urls:
         description: "URL's, gescheiden door spaties"
         required: true
+      jq:
+        description: "Optioneel jq-filter voor de laatste URL"
+        required: false
+        default: ""
 
 jobs:
   probe:
@@ -16,6 +20,7 @@ jobs:
       - name: Ophalen
         env:
           URLS: ${{ inputs.urls }}
+          JQ: ${{ inputs.jq }}
         run: |
           for u in $URLS; do
             echo "=================== $u"
@@ -23,3 +28,4 @@ jobs:
             echo "--- grootte: $(wc -c < body.bin 2>/dev/null)"
             head -c 2500 body.bin 2>/dev/null; echo
           done
+          if [ -n "$JQ" ]; then echo "=================== jq"; jq -r "$JQ" body.bin | head -c 60000; fi
