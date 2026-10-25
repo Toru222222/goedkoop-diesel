@@ -1,6 +1,6 @@
-import { countryInfo, geocode, reverseGeocode, fetchStations, fetchOfficialPrices } from './providers.js?v=8';
-import { latestReports, addReport, detectMode } from './store.js?v=8';
-import { readImageText, extractPrices } from './ocr.js?v=8';
+import { countryInfo, geocode, reverseGeocode, fetchStations, fetchOfficialPrices } from './providers.js?v=9';
+import { latestReports, addReport, detectMode } from './store.js?v=9';
+import { readImageText, extractPrices } from './ocr.js?v=9';
 
 const $ = id => document.getElementById(id);
 const MAX_AGE_DAYS = 14; // oudere meldingen tellen niet mee
@@ -135,7 +135,10 @@ async function load() {
     // Officiële stations hebben voorrang; OSM-stations op dezelfde plek vallen weg.
     const merged = [...official];
     for (const s of osm) {
-      if (!official.some(o => distanceKm(o.lat, o.lon, s.lat, s.lon) < 0.08)) merged.push(s);
+      const twin = official.find(o => distanceKm(o.lat, o.lon, s.lat, s.lon) < 0.08);
+      if (!twin) { merged.push(s); continue; }
+      // Officiële bronnen hebben soms geen naam of merk; neem die dan over uit OpenStreetMap.
+      if (!twin.brand) { twin.name = s.name; twin.brand = s.brand; }
     }
 
     const cutoff = Date.now() - MAX_AGE_DAYS * 864e5;
@@ -199,7 +202,7 @@ function showExternalLink() {
   el.hidden = !site;
   el.innerHTML = '';
   if (!site) return;
-  const city = state.label && state.label !== 'Je locatie' ? state.label : '';
+  const city = state.label && state.label !== 'Je locatie' ? state.label.split(',')[0].trim() : '';
   const a = document.createElement('a');
   a.href = site.url(city);
   a.target = '_blank';

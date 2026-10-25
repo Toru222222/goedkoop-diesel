@@ -17,11 +17,17 @@ Web-app voor telefoon en computer die tankstations rond je locatie toont, gesort
 |---|---|---|
 | Zweden, Noorwegen, en alle andere landen | Meldingen van gebruikers | Werkt |
 | Duitsland | Tankerkönig (live, gratis API-sleutel) | Gebouwd, niet live getest |
-| Frankrijk | prix-carburants, open data van de overheid (live) | Gebouwd, niet live getest |
+| Frankrijk | prix-carburants, open data van de overheid | Werkt, elk uur bijgewerkt |
+| Spanje | Geoportal Gasolineras (ministerie) | Werkt, elk uur bijgewerkt |
+| Verenigd Koninkrijk | open prijsfeeds van de ketens (Asda, Esso, Tesco, MFG, ...) | Werkt, elk uur bijgewerkt |
+| Italië | Osservaprezzi (MIMIT) | Gebouwd, bron nog niet bereikbaar vanaf GitHub |
+| Noorwegen | link naar Drivstoffapp (geen open data) | Werkt |
 
 **Richtprijs in Zweden**: een GitHub Actions-taak (`.github/workflows/listprices.yml`) haalt drie keer per dag de landelijke listpris voor diesel op van St1, Circle K, Preem en OKQ8 (Circle K, Preem en OKQ8 alleen als prijs voor zakelijke tankkaarten) en schrijft die naar `listprices.json`. Stations van die ketens zonder melding tonen die als richtprijs (≈). Ingo, Tanka en onafhankelijke stations publiceren geen prijs.
 
 **Zweden** heeft geen openbare prijsdata per station. Bensinpriser.nu werkt ook met meldingen van gebruikers, en ketens als Circle K en Preem publiceren alleen een landelijke "listpris", die meestal hoger ligt dan de prijs aan de pomp. Daarom vertrouwt de app in Zweden op meldingen. Betaalde bronnen met echte pompprijzen bestaan wel (TomTom Fuel Prices, HERE Fuel Prices), die kun je later als provider toevoegen.
+
+**Open data per land**: `.github/workflows/opendata.yml` draait elk uur `scripts/update-opendata.mjs`, dat per land een bestand met alle stations en dieselprijzen op de branch `prices` zet. De app leest dat bestand via raw.githubusercontent.com. Een land toevoegen: een functie in `SOURCES` in dat script en `provider: 'opendata'` in `COUNTRIES`.
 
 Een land of bron toevoegen: één regel in `COUNTRIES` in `providers.js`, plus eventueel een functie in `providers`.
 

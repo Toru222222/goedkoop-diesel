@@ -127,7 +127,8 @@ for (const [cc, fn] of Object.entries(SOURCES)) {
     const r = await fn();
     const [lo, hi] = LIMITS[r.currency];
     const stations = r.stations
-      .filter(s => Number.isFinite(s[4]) && Number.isFinite(s[5]) && s[6] >= lo && s[6] <= hi)
+      // Prijzen ouder dan 14 dagen zijn niet meer actueel (bijv. gesloten stations).
+      .filter(s => Number.isFinite(s[4]) && Number.isFinite(s[5]) && s[6] >= lo && s[6] <= hi && !(s[7] < Date.now() - 14 * 864e5))
       .map(s => [s[0], s[1], s[2], s[3], round(s[4]), round(s[5]), round(s[6], 3), s[7]]);
     if (!stations.length) throw new Error('geen stations met dieselprijs');
     await fs.writeFile(new URL(`../out/${cc}.json`, import.meta.url),

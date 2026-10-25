@@ -16,9 +16,14 @@ export const COUNTRIES = {
   BE: { name: 'België', currency: 'EUR', unit: '€', min: 1, max: 3.5 },
   DE: { name: 'Duitsland', currency: 'EUR', unit: '€', min: 1, max: 3.5, provider: 'tankerkoenig',
         note: 'Duitsland: live prijzen via Tankerkönig (gratis API-sleutel nodig, zie README).' },
-  FR: { name: 'Frankrijk', currency: 'EUR', unit: '€', min: 1, max: 3.5, provider: 'france',
-        note: 'Frankrijk: live prijzen uit de open data van de Franse overheid.' },
-  GB: { name: 'Verenigd Koninkrijk', currency: 'GBP', unit: '£', min: 1, max: 3 },
+  FR: { name: 'Frankrijk', currency: 'EUR', unit: '€', min: 1, max: 3.5, provider: 'opendata',
+        note: 'Frankrijk: echte pompprijzen uit de open data van de Franse overheid.' },
+  ES: { name: 'Spanje', currency: 'EUR', unit: '€', min: 0.8, max: 3, provider: 'opendata',
+        note: 'Spanje: echte pompprijzen uit de open data van het Spaanse ministerie.' },
+  IT: { name: 'Italië', currency: 'EUR', unit: '€', min: 1, max: 3.5, provider: 'opendata',
+        note: 'Italië: echte pompprijzen uit de open data van de Italiaanse overheid (dagelijks om 8 uur).' },
+  GB: { name: 'Verenigd Koninkrijk', currency: 'GBP', unit: '£', min: 1, max: 3, provider: 'opendata',
+        note: 'Verenigd Koninkrijk: echte pompprijzen uit de open prijsfeeds van de grote ketens.' },
 };
 export const DEFAULT_COUNTRY = { name: '', currency: '', unit: '', min: 0.3, max: 400 };
 
@@ -165,6 +170,26 @@ async function stationsViaNominatim(lat, lon, radius) {
 }
 
 // ---- Officiële prijsbronnen per land ----
+
+const OPENDATA_URL = 'https://raw.githubusercontent.com/Toru222222/goedkoop-diesel/prices/';
+const openDataCache = new Map();
+
+function loadOpenData(country) {
+  if (!openDataCache.has(country)) {
+    const p = fetch(OPENDATA_URL + country + '.json', { cache: 'no-cache' })
+      .then(r => { if (!r.ok) throw new Error('Prijsbestand ' + country + ': HTTP ' + r.status); return r.json(); });
+    p.catch(() => openDataCache.delete(country));
+    openDataCache.set(country, p);
+  }
+  return openDataCache.get(country);
+}
+
+function distanceKm(aLat, aLon, bLat, bLon) {
+  const R = 6371, rad = Math.PI / 180;
+  const dLat = (bLat - aLat) * rad, dLon = (bLon - aLon) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(aLat * rad) * Math.cos(bLat * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
 // Elke provider geeft stations mét prijs terug: {id, name, brand, address, lat, lon, price, ts, source}
 
 const providers = {
@@ -186,25 +211,23 @@ const providers = {
   },
 
   // Frankrijk: prix-carburants (open data, data.economie.gouv.fr)
-  async france(lat, lon, radius) {
-    const km = Math.round(radius / 1000);
-    const where = `within_distance(geom, geom'POINT(${lon} ${lat})', ${km}km) and gazole_prix is not null`;
-    const url = 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?limit=100&where=' + encodeURIComponent(where);
-    const j = await (await fetch(url)).json();
-    return (j.results || []).map(r => ({
-      id: 'fr:' + r.id,
-      name: r.adresse ? `Station ${r.ville || ''}`.trim() : 'Station',
-      brand: '',
-      address: [r.adresse, r.ville].filter(Boolean).join(', '),
-      lat: r.geom?.lat, lon: r.geom?.lon,
-      price: +r.gazole_prix, ts: r.gazole_maj ? Date.parse(r.gazole_maj) : Date.now(),
-      source: 'prix-carburants.gouv.fr',
-    })).filter(s => s.lat != null);
+  // Landen met open data: een GitHub-taak zet elk uur een bestand per land klaar.
+  async opendata(lat, lon, radius, settings, country) {
+    const data = await loadOpenData(country);
+    const km = radius / 1000;
+    return data.stations
+      .filter(s => distanceKm(lat, lon, s[4], s[5]) <= km)
+      .map(([id, name, brand, address, sLat, sLon, price, ts]) => ({
+        id, brand,
+        name: name || brand || ('Station ' + (address.split(', ').at(-1) || '')).trim(),
+        address, lat: sLat, lon: sLon, price, ts: ts || Date.parse(data.updatedAt), source: data.source,
+      }));
   },
+
 };
 
 export async function fetchOfficialPrices(country, lat, lon, radius, settings) {
   const name = COUNTRIES[country]?.provider;
   if (!name) return [];
-  return providers[name](lat, lon, radius, settings);
+  return providers[name](lat, lon, radius, settings, country);
 }
