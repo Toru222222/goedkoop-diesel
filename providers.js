@@ -6,7 +6,10 @@ export const COUNTRIES = {
   SE: { name: 'Zweden', currency: 'SEK', unit: 'kr', min: 10, max: 40,
         note: 'Zweden heeft geen open prijsdata per station. Prijzen hier zijn gemeld door gebruikers: scan of typ de prijs als je langs een station rijdt.' },
   NO: { name: 'Noorwegen', currency: 'NOK', unit: 'kr', min: 10, max: 40,
-        note: 'Noorwegen heeft geen open prijsdata per station. Prijzen hier zijn gemeld door gebruikers.' },
+        note: 'Noorwegen heeft geen open prijsdata per station, en de prijzen wisselen er meerdere keren per dag. Prijzen hier zijn gemeld door gebruikers.',
+        externalSite: { name: 'Drivstoffapp', url: city => city
+          ? 'https://www.drivstoffapp.no/search/' + encodeURIComponent(city)
+          : 'https://www.drivstoffapp.no/' } },
   DK: { name: 'Denemarken', currency: 'DKK', unit: 'kr', min: 8, max: 30 },
   FI: { name: 'Finland', currency: 'EUR', unit: '€', min: 1, max: 3.5 },
   NL: { name: 'Nederland', currency: 'EUR', unit: '€', min: 1, max: 3.5 },

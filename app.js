@@ -1,6 +1,6 @@
-import { countryInfo, geocode, reverseGeocode, fetchStations, fetchOfficialPrices } from './providers.js?v=7';
-import { latestReports, addReport, detectMode } from './store.js?v=7';
-import { readImageText, extractPrices } from './ocr.js?v=7';
+import { countryInfo, geocode, reverseGeocode, fetchStations, fetchOfficialPrices } from './providers.js?v=8';
+import { latestReports, addReport, detectMode } from './store.js?v=8';
+import { readImageText, extractPrices } from './ocr.js?v=8';
 
 const $ = id => document.getElementById(id);
 const MAX_AGE_DAYS = 14; // oudere meldingen tellen niet mee
@@ -86,6 +86,7 @@ function setCountry(country) {
   const c = countryInfo(country);
   $('place').textContent = `📍 ${state.label}${c.name ? ' · ' + c.name : ''}`;
   if (c.note) { $('source-note').hidden = false; $('source-note').textContent = c.note; }
+  showExternalLink();
   try { localStorage.setItem('diesel-last-place', JSON.stringify({ lat: state.lat, lon: state.lon, label: state.label, country })); } catch {}
 }
 
@@ -109,6 +110,7 @@ async function load() {
   const c = countryInfo(country);
   $('source-note').hidden = !c.note;
   $('source-note').textContent = c.note || '';
+  showExternalLink();
 
   try {
     const [osm, official, reports, listPrices] = await Promise.all([
@@ -188,6 +190,22 @@ function showListPriceNote(c, chainPrices) {
   $('source-note').textContent = [c.note,
     `Landelijke listpris diesel: ${parts.join(', ')}. Aan de pomp is het meestal 0,5 tot 1,5 kr goedkoper.`]
     .filter(Boolean).join(' ');
+}
+
+// Landen zonder prijsdata: verwijs naar een site met actuele pompprijzen.
+function showExternalLink() {
+  const site = countryInfo(state.country).externalSite;
+  const el = $('external-link');
+  el.hidden = !site;
+  el.innerHTML = '';
+  if (!site) return;
+  const city = state.label && state.label !== 'Je locatie' ? state.label : '';
+  const a = document.createElement('a');
+  a.href = site.url(city);
+  a.target = '_blank';
+  a.rel = 'noopener';
+  a.textContent = `Actuele pompprijzen${city ? ' in ' + city : ''} op ${site.name} ↗`;
+  el.append(a);
 }
 
 // ---- Weergave ----
