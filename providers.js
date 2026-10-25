@@ -86,14 +86,14 @@ const OVERPASS_SERVERS = [
 ];
 const STATION_CACHE_KEY = 'diesel-stations-cache-v1';
 
-async function queryOverpass(q) {
+async function queryOverpass(q, timeoutMs = 20000) {
   let preferred = 0;
   try { preferred = +localStorage.getItem('diesel-overpass') || 0; } catch {}
   const order = [...OVERPASS_SERVERS.keys()].sort((a, b) => (b === preferred) - (a === preferred));
   const errors = [];
   for (const i of order) {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 20000);
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
       const res = await fetch(OVERPASS_SERVERS[i], {
         method: 'POST',
@@ -134,6 +134,10 @@ export async function fetchStations(lat, lon, radius) {
     if (cached?.key !== cacheKey) throw err;
     j = cached.data;
   }
+  return parseStations(j);
+}
+
+function parseStations(j) {
   return j.elements
     .map(el => {
       const t = el.tags || {};
@@ -151,6 +155,41 @@ export async function fetchStations(lat, lon, radius) {
       };
     })
     .filter(Boolean);
+}
+
+// ---- Route (OSRM, open routeplanner op OpenStreetMap-data) ----
+
+// Geeft { coords: [[lat, lon], ...], km, minutes, noToll } terug. "Zonder tol" sluit
+// wegen met toll=yes uit; lukt dat niet, dan volgt de gewone route met noToll: false.
+export async function planRoute(from, to, noToll) {
+  const base = `https://router.project-osrm.org/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=full&geometries=geojson`;
+  const attempt = async url => {
+    let res;
+    try { res = await fetch(url); } catch { throw new Error('Routeplanner niet bereikbaar.'); }
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || j.code !== 'Ok' || !j.routes?.length) throw new Error(j.message || 'Geen route gevonden.');
+    const r = j.routes[0];
+    return { coords: r.geometry.coordinates.map(([lon, lat]) => [lat, lon]), km: r.distance / 1000, minutes: r.duration / 60 };
+  };
+  if (noToll) {
+    try { return { ...(await attempt(base + '&exclude=toll')), noToll: true }; }
+    catch (err) { console.warn('Route zonder tol mislukt', err); }
+  }
+  return { ...(await attempt(base)), noToll: false };
+}
+
+// Tankstations binnen corridorM meter van de route.
+export async function fetchStationsAlongRoute(coords, corridorM = 2000) {
+  const pts = [];
+  let last = null;
+  for (const c of coords) {
+    if (!last || distanceKm(last[0], last[1], c[0], c[1]) >= 3) { pts.push(c); last = c; }
+  }
+  const end = coords.at(-1);
+  if (pts.at(-1) !== end) pts.push(end);
+  const line = pts.map(([lat, lon]) => `${lat.toFixed(5)},${lon.toFixed(5)}`).join(',');
+  const q = `[out:json][timeout:90];nwr["amenity"="fuel"](around:${corridorM},${line});out center tags;`;
+  return parseStations(await queryOverpass(q, 90000));
 }
 
 // Reservebron: Nominatim kan ook op voorzieningstype zoeken binnen een kader.

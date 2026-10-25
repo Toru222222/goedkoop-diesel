@@ -120,3 +120,4 @@ dialog label input { display: block; width: 100%; margin-top: 4px; }
 .chips button { padding: 6px 10px; font-weight: 600; }
 .toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 .toggle input { width: 18px; height: 18px; padding: 0; margin: 0; accent-color: var(--accent); }
+.search.route { margin-top: 10px; }

@@ -5,7 +5,7 @@
 // Een eigen melding wordt altijd ook lokaal bewaard, zodat hij zichtbaar blijft
 // als de gedeelde opslag even niet bereikbaar is.
 
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=11';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=12';
 
 const LS_KEY = 'diesel-reports-v1';
 const MAX_AGE_MS = 14 * 864e5;

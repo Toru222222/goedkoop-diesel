@@ -8,6 +8,7 @@ Web-app voor telefoon en computer die tankstations rond je locatie toont, gesort
 - **Stations**: wereldwijd uit OpenStreetMap, dus de app werkt in elk land.
 - **Prijzen**: per land uit de beste bron die er is (zie tabel). Waar geen open data bestaat, melden gebruikers de prijs.
 - **Prijsbord scannen**: bij "Prijs melden" maak je een foto van het prijsbord; de app leest de cijfers (tekstherkenning in de browser, de foto verlaat je telefoon niet) en stelt de dieselprijs voor. Je bevestigt zelf.
+- **Routeplanner**: vul een bestemming in bij "Route naar". De app plant de route (OSRM, op OpenStreetMap-data; zonder tolwegen als "Route zonder tol" aanstaat) en toont de tankstations tot 2 km van de route, goedkoopste eerst. 🧭 Route bij een station opent Google Maps via dat station naar je bestemming.
 - **Route**: opent Google Maps naar het station. Met "Route zonder tol" vermijdt Google Maps tolwegen en bompenger (op Android via de navigatie-app, elders via de Maps-website).
 - Meldingen ouder dan 14 dagen tellen niet mee.
 

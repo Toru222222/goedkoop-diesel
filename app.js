@@ -1,6 +1,6 @@
-import { countryInfo, geocode, reverseGeocode, fetchStations, fetchOfficialPrices, LIVE_COUNTRIES } from './providers.js?v=11';
-import { latestReports, addReport, detectMode } from './store.js?v=11';
-import { readImageText, extractPrices } from './ocr.js?v=11';
+import { countryInfo, geocode, reverseGeocode, fetchStations, fetchOfficialPrices, LIVE_COUNTRIES, planRoute, fetchStationsAlongRoute } from './providers.js?v=12';
+import { latestReports, addReport, detectMode } from './store.js?v=12';
+import { readImageText, extractPrices } from './ocr.js?v=12';
 
 const $ = id => document.getElementById(id);
 const MAX_AGE_DAYS = 14; // oudere meldingen tellen niet mee
@@ -8,6 +8,7 @@ const MAX_AGE_DAYS = 14; // oudere meldingen tellen niet mee
 const state = {
   lat: null, lon: null, label: '', country: '',
   stations: [],
+  route: null, // { to, label, coords, km, minutes, noToll } als de routeplanner actief is
   reportFor: null,
   settings: loadSettings(),
 };
@@ -91,7 +92,7 @@ function setCountry(country) {
 }
 
 function setPlace(lat, lon, label, country) {
-  Object.assign(state, { lat, lon, label, country });
+  Object.assign(state, { lat, lon, label, country, route: null });
   try { localStorage.setItem('diesel-last-place', JSON.stringify({ lat, lon, label, country })); } catch {}
   const c = countryInfo(country);
   $('place').textContent = `📍 ${label}${c.name ? ' · ' + c.name : ''}`;
@@ -132,28 +133,8 @@ async function load() {
     const chainPrices = Object.values(listPrices).filter(p => !state.country || p.country === state.country);
     showListPriceNote(countryInfo(state.country), chainPrices);
 
-    // Officiële stations hebben voorrang; OSM-stations op dezelfde plek vallen weg.
-    const merged = [...official];
-    for (const s of osm) {
-      const twin = official.find(o => distanceKm(o.lat, o.lon, s.lat, s.lon) < 0.08);
-      if (!twin) { merged.push(s); continue; }
-      // Officiële bronnen hebben soms geen naam of merk; neem die dan over uit OpenStreetMap.
-      if (!twin.brand) { twin.name = s.name; twin.brand = s.brand; }
-    }
-
-    const cutoff = Date.now() - MAX_AGE_DAYS * 864e5;
-    for (const s of merged) {
-      s.dist = distanceKm(lat, lon, s.lat, s.lon);
-      const r = reports.get(s.id);
-      if (r && r.ts > cutoff && (!s.price || r.ts > s.ts)) {
-        s.price = r.price; s.ts = r.ts; s.source = 'melding';
-      }
-      if (s.price == null) s.listPrice = chainPrices.find(p => matchesBrand(s, p.brand));
-    }
-    // Eerst echte pompprijzen, dan richtprijzen van de keten, dan stations zonder prijs.
-    const rank = s => s.price != null ? 0 : s.listPrice ? 1 : 2;
-    const value = s => s.price ?? s.listPrice?.price ?? 0;
-    merged.sort((a, b) => rank(a) - rank(b) || value(a) - value(b) || a.dist - b.dist);
+    const merged = mergeStations(osm, official, reports, chainPrices, s => distanceKm(lat, lon, s.lat, s.lon), state.country);
+    merged.sort(byPrice((a, b) => a.dist - b.dist));
 
     state.stations = merged;
     render();
@@ -165,6 +146,124 @@ async function load() {
     console.error(err);
     setStatus(err.message || 'Er ging iets mis bij het laden.', true);
   }
+}
+
+// Officiële stations hebben voorrang; OSM-stations op dezelfde plek vallen weg.
+// Daarna gaan recente meldingen en richtprijzen van de keten erover.
+function mergeStations(osm, official, reports, chainPrices, distOf, fallbackCountry) {
+  const merged = [...official];
+  for (const s of osm) {
+    const twin = official.find(o => distanceKm(o.lat, o.lon, s.lat, s.lon) < 0.08);
+    if (!twin) { merged.push(s); continue; }
+    // Officiële bronnen hebben soms geen naam of merk; neem die dan over uit OpenStreetMap.
+    if (!twin.brand) { twin.name = s.name; twin.brand = s.brand; }
+  }
+  const cutoff = Date.now() - MAX_AGE_DAYS * 864e5;
+  for (const s of merged) {
+    s.dist = distOf(s);
+    const r = reports.get(s.id);
+    if (r && r.ts > cutoff && (!s.price || r.ts > s.ts)) {
+      s.price = r.price; s.ts = r.ts; s.source = 'melding';
+      if (r.country && !s.country) s.country = r.country;
+    }
+    if (s.price == null) {
+      const cc = s.country || fallbackCountry;
+      // fallbackCountry null (routeplanner): geen land bekend betekent geen richtprijs.
+      const own = cc ? chainPrices.filter(p => p.country === cc) : fallbackCountry === null ? [] : chainPrices;
+      s.listPrice = own.find(p => matchesBrand(s, p.brand));
+    }
+  }
+  return merged;
+}
+
+// Eerst echte pompprijzen, dan richtprijzen van de keten, dan stations zonder prijs.
+// Ruwe wisselkoersen naar euro, alleen om stations in verschillende landen te vergelijken.
+const EUR_RATE = { EUR: 1, SEK: 0.088, NOK: 0.085, DKK: 0.134, GBP: 1.17 };
+
+function byPrice(tiebreak) {
+  const rank = s => s.price != null ? 0 : s.listPrice ? 1 : 2;
+  const rate = s => EUR_RATE[countryInfo(s.country || state.country).currency] || 1;
+  const value = s => (s.price ?? s.listPrice?.price ?? 0) * rate(s);
+  return (a, b) => rank(a) - rank(b) || value(a) - value(b) || tiebreak(a, b);
+}
+
+// ---- Routeplanner: stations langs de route, goedkoopste eerst ----
+
+async function routeSearch(e) {
+  e.preventDefault();
+  const q = $('route-input').value.trim();
+  if (!q) return;
+  if (state.lat == null) return setStatus('Bepaal eerst je locatie of zoek een startplaats.', true);
+  $('list').innerHTML = '';
+  $('best').hidden = true;
+  try {
+    setStatus('Bestemming zoeken…');
+    const to = await geocode(q);
+    if (!to) return setStatus(`"${q}" niet gevonden.`, true);
+    setStatus('Route plannen…');
+    const wantNoToll = $('no-toll').checked;
+    const r = await planRoute({ lat: state.lat, lon: state.lon }, to, wantNoToll);
+    state.route = { to, label: to.label, ...r, wantNoToll };
+    setStatus(`Tankstations langs de route zoeken (${Math.round(r.km)} km)…`);
+
+    // Afstand langs de route per routepunt, om stations op volgorde te zetten.
+    const along = [0];
+    for (let i = 1; i < r.coords.length; i++) {
+      along[i] = along[i - 1] + distanceKm(...r.coords[i - 1], ...r.coords[i]);
+    }
+    const posOnRoute = s => {
+      let best = Infinity, at = 0;
+      for (let i = 0; i < r.coords.length; i++) {
+        const d = distanceKm(s.lat, s.lon, ...r.coords[i]);
+        if (d < best) { best = d; at = along[i]; }
+      }
+      s.off = best;
+      return at;
+    };
+
+    const lats = r.coords.map(c => c[0]), lons = r.coords.map(c => c[1]);
+    const mid = { lat: (Math.min(...lats) + Math.max(...lats)) / 2, lon: (Math.min(...lons) + Math.max(...lons)) / 2 };
+    const reach = distanceKm(mid.lat, mid.lon, Math.max(...lats), Math.max(...lons)) * 1000 + 3000;
+
+    const [osm, reports, listPrices] = await Promise.all([
+      fetchStationsAlongRoute(r.coords),
+      latestReports(mid.lat, mid.lon, reach),
+      fetchListPrices(),
+    ]);
+    // Officiële prijzen voor elk land waar de route doorheen gaat.
+    const countries = [...new Set([state.country, to.country, ...osm.map(s => s.country)].filter(Boolean))];
+    const official = (await Promise.all(countries.map(cc =>
+      fetchOfficialPrices(cc, mid.lat, mid.lon, reach, state.settings)
+        .then(list => list.map(s => ({ ...s, country: cc })), () => []))))
+      .flat()
+      .filter(s => osm.some(o => distanceKm(o.lat, o.lon, s.lat, s.lon) < 0.08) || r.coords.some(c => distanceKm(s.lat, s.lon, ...c) < 2));
+
+    // Zonder bekend land krijgt een station geen richtprijs: de route kan de grens over.
+    const merged = mergeStations(osm, official, reports, Object.values(listPrices), posOnRoute, null)
+      .filter(s => s.off <= 2.5);
+    merged.sort(byPrice((a, b) => a.dist - b.dist));
+    state.stations = merged;
+
+    $('source-note').hidden = false;
+    $('source-note').textContent = [
+      `Route naar ${to.label.split(',')[0]}: ${Math.round(r.km)} km, ${formatDuration(r.minutes)}.`,
+      wantNoToll && !r.noToll ? 'Een route zonder tol was niet te vinden; dit is de gewone route.' : '',
+      wantNoToll && r.noToll ? 'Zonder tolwegen. Bompenger in Noorwegen staan niet altijd op de kaart, dus controleer de route in Google Maps.' : '',
+    ].filter(Boolean).join(' ');
+    render();
+    const priced = merged.filter(s => s.price != null).length;
+    setStatus(merged.length
+      ? `${merged.length} stations langs de route, ${priced} met dieselprijs.`
+      : 'Geen tankstations langs de route gevonden.');
+  } catch (err) {
+    console.error(err);
+    setStatus(err.message || 'Route plannen mislukt.', true);
+  }
+}
+
+function formatDuration(min) {
+  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  return h ? `${h} u ${m} min` : `${m} min`;
 }
 
 // ---- Richtprijzen van ketens (listprices.json, dagelijks bijgewerkt) ----
@@ -223,6 +322,12 @@ function showExternalLink() {
 // Route in Google Maps. "Zonder tol": op Android via de navigatie-intent (avoid=t),
 // elders via de oude Maps-link met dirflg=t; beide vermijden tolwegen en bompenger.
 function navUrl(s) {
+  const r = state.route;
+  if (r) {
+    // Via het station naar de bestemming.
+    const base = `https://maps.google.com/maps?saddr=${state.lat},${state.lon}&daddr=${s.lat},${s.lon}+to:${r.to.lat},${r.to.lon}`;
+    return $('no-toll').checked ? base + '&dirflg=t' : base;
+  }
   if (!$('no-toll').checked) return `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}`;
   if (/Android/i.test(navigator.userAgent)) return `google.navigation:q=${s.lat},${s.lon}&mode=d&avoid=t`;
   return `https://maps.google.com/maps?daddr=${s.lat},${s.lon}&dirflg=t`;
@@ -237,10 +342,10 @@ function render() {
   if (cheapest) {
     $('best').hidden = false;
     $('best').innerHTML = '';
-    const h = document.createElement('h2'); h.textContent = 'Goedkoopste diesel in de buurt';
-    const big = document.createElement('div'); big.className = 'big'; big.textContent = formatPrice(cheapest.price, country);
+    const h = document.createElement('h2'); h.textContent = state.route ? 'Goedkoopste diesel langs de route' : 'Goedkoopste diesel in de buurt';
+    const big = document.createElement('div'); big.className = 'big'; big.textContent = formatPrice(cheapest.price, cheapest.country || country);
     const who = document.createElement('div');
-    who.textContent = `${cheapest.name} · ${cheapest.dist.toFixed(1)} km · ${timeAgo(cheapest.ts)}`;
+    who.textContent = `${cheapest.name} · ${state.route ? 'na ' + Math.round(cheapest.dist) : cheapest.dist.toFixed(1)} km · ${timeAgo(cheapest.ts)}`;
     $('best').append(h, big, who);
   }
 
@@ -256,14 +361,15 @@ function render() {
       </div>`;
     li.querySelector('.name').textContent = s.name;
     li.querySelector('.meta').textContent =
-      [s.brand && s.brand !== s.name ? s.brand : '', s.address, `${s.dist.toFixed(1)} km`].filter(Boolean).join(' · ');
+      [s.brand && s.brand !== s.name ? s.brand : '', s.address,
+       state.route ? `na ${Math.round(s.dist)} km${s.off > 0.3 ? `, ${s.off.toFixed(1)} km van de route` : ''}` : `${s.dist.toFixed(1)} km`].filter(Boolean).join(' · ');
     const price = li.querySelector('.price');
     if (s.price != null) {
-      price.textContent = formatPrice(s.price, country);
+      price.textContent = formatPrice(s.price, s.country || country);
       price.classList.toggle('cheapest', s === cheapest);
       li.querySelector('.age').textContent = `${timeAgo(s.ts)} · ${s.source}`;
     } else if (s.listPrice) {
-      price.textContent = '≈ ' + formatPrice(s.listPrice.price, country);
+      price.textContent = '≈ ' + formatPrice(s.listPrice.price, s.listPrice.country || country);
       price.classList.add('list');
       li.querySelector('.age').textContent = `listpris ${s.listPrice.brand}${s.listPrice.date ? ' · ' + shortDate(s.listPrice.date) : ''}`;
     } else {
@@ -346,7 +452,8 @@ async function onSave(e) {
 
 $('btn-locate').addEventListener('click', locate);
 $('search-form').addEventListener('submit', search);
-$('radius').addEventListener('change', () => state.lat != null && load());
+$('radius').addEventListener('change', () => state.lat != null && !state.route && load());
+$('route-form').addEventListener('submit', routeSearch);
 try { $('no-toll').checked = localStorage.getItem('diesel-no-toll') === '1'; } catch {}
 $('no-toll').addEventListener('change', () => {
   try { localStorage.setItem('diesel-no-toll', $('no-toll').checked ? '1' : '0'); } catch {}
