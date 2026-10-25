@@ -1,6 +1,6 @@
-import { countryInfo, geocode, reverseGeocode, fetchStations, fetchOfficialPrices } from './providers.js?v=6';
-import { latestReports, addReport, detectMode } from './store.js?v=6';
-import { readImageText, extractPrices } from './ocr.js?v=6';
+import { countryInfo, geocode, reverseGeocode, fetchStations, fetchOfficialPrices } from './providers.js?v=7';
+import { latestReports, addReport, detectMode } from './store.js?v=7';
+import { readImageText, extractPrices } from './ocr.js?v=7';
 
 const $ = id => document.getElementById(id);
 const MAX_AGE_DAYS = 14; // oudere meldingen tellen niet mee
@@ -81,6 +81,14 @@ async function search(e) {
   }
 }
 
+function setCountry(country) {
+  state.country = country;
+  const c = countryInfo(country);
+  $('place').textContent = `📍 ${state.label}${c.name ? ' · ' + c.name : ''}`;
+  if (c.note) { $('source-note').hidden = false; $('source-note').textContent = c.note; }
+  try { localStorage.setItem('diesel-last-place', JSON.stringify({ lat: state.lat, lon: state.lon, label: state.label, country })); } catch {}
+}
+
 function setPlace(lat, lon, label, country) {
   Object.assign(state, { lat, lon, label, country });
   try { localStorage.setItem('diesel-last-place', JSON.stringify({ lat, lon, label, country })); } catch {}
@@ -111,8 +119,16 @@ async function load() {
       latestReports(lat, lon, radius),
       fetchListPrices(),
     ]);
-    const chainPrices = Object.values(listPrices).filter(p => p.country === country);
-    showListPriceNote(c, chainPrices);
+    // Land onbekend (bijv. omdat de adreszoeker faalde)? Neem dan het land dat de
+    // meeste stations in OpenStreetMap hebben.
+    if (!state.country) {
+      const counts = {};
+      for (const s of osm) if (s.country) counts[s.country] = (counts[s.country] || 0) + 1;
+      const guess = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
+      if (guess) setCountry(guess);
+    }
+    const chainPrices = Object.values(listPrices).filter(p => !state.country || p.country === state.country);
+    showListPriceNote(countryInfo(state.country), chainPrices);
 
     // Officiële stations hebben voorrang; OSM-stations op dezelfde plek vallen weg.
     const merged = [...official];
@@ -311,7 +327,11 @@ detectMode().then(m => {
 
 try {
   const last = JSON.parse(localStorage.getItem('diesel-last-place'));
-  if (last) setPlace(last.lat, last.lon, last.label, last.country);
+  if (last) {
+    setPlace(last.lat, last.lon, last.label, last.country);
+    // Eerder opgeslagen zonder land: probeer het land alsnog te bepalen.
+    if (!last.country) reverseGeocode(last.lat, last.lon).then(p => { if (p.country) { setCountry(p.country); load(); } }).catch(() => {});
+  }
   else setStatus('Tik op "Mijn locatie" of zoek een plaats.');
 } catch {
   setStatus('Tik op "Mijn locatie" of zoek een plaats.');

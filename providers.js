@@ -41,15 +41,25 @@ export async function geocode(query) {
 }
 
 export async function reverseGeocode(lat, lon) {
-  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&lat=${lat}&lon=${lon}`;
-  const res = await fetch(url, { headers: { 'Accept-Language': 'nl' } });
-  if (!res.ok) return { label: '', country: '' };
-  const j = await res.json();
-  const a = j.address || {};
-  return {
-    label: a.city || a.town || a.village || a.municipality || '',
-    country: (a.country_code || '').toUpperCase(),
-  };
+  // Eerst Nominatim; lukt dat niet, dan BigDataCloud (gratis, zonder sleutel).
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&lat=${lat}&lon=${lon}`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'nl' } });
+    if (res.ok) {
+      const a = (await res.json()).address || {};
+      const country = (a.country_code || '').toUpperCase();
+      if (country) return { label: a.city || a.town || a.village || a.municipality || '', country };
+    }
+  } catch (err) { console.warn('Nominatim', err); }
+  try {
+    const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=nl`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const j = await res.json();
+      return { label: j.city || j.locality || '', country: (j.countryCode || '').toUpperCase() };
+    }
+  } catch (err) { console.warn('BigDataCloud', err); }
+  return { label: '', country: '' };
 }
 
 // ---- Stations (OpenStreetMap Overpass) ----
@@ -123,6 +133,7 @@ export async function fetchStations(lat, lon, radius) {
         name: t.name || t.brand || t.operator || 'Tankstation',
         brand: t.brand || '',
         address: [street, t['addr:city']].filter(Boolean).join(', '),
+        country: (t['addr:country'] || '').toUpperCase(),
         lat: sLat, lon: sLon,
       };
     })
