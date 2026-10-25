@@ -77,6 +77,33 @@ const SOURCES = {
     return { currency: 'EUR', source: 'mimit.gov.it (Osservaprezzi)', stations: out };
   },
 
+  // Oostenrijk: Spritpreisrechner van E-Control (api.e-control.at/sprit/1.0/doc).
+  // Per district; volgens de wet krijgen alleen de goedkoopste stations een prijs.
+  async AT() {
+    const base = 'https://api.e-control.at/sprit/1.0';
+    const regions = await get(`${base}/regions`);
+    const districts = regions.flatMap(r => r.subRegions || []).filter(d => d.type === 'PB');
+    if (DEBUG) console.log('AT districten', districts.length, JSON.stringify(districts[0]));
+    const seen = new Map();
+    for (const d of districts) {
+      try {
+        const list = await get(`${base}/search/gas-stations/by-region?code=${d.code}&type=PB&fuelType=DIE&includeClosed=false`);
+        if (DEBUG && !seen.size) console.log('AT voorbeeld', JSON.stringify(list[0]));
+        for (const s of list) {
+          const p = (s.prices || []).find(x => x.fuelType === 'DIE');
+          if (!p || seen.has(s.id)) continue;
+          const l = s.location || {};
+          seen.set(s.id, [`at:${s.id}`, s.name || '', '', [l.address, [l.postalCode, l.city].filter(Boolean).join(' ')].filter(Boolean).join(', '),
+            num(l.latitude), num(l.longitude), num(p.amount), Date.now()]);
+        }
+      } catch (err) {
+        console.log(`  AT district ${d.code}: ${err.message}`);
+      }
+      await new Promise(r => setTimeout(r, 200));
+    }
+    return { currency: 'EUR', source: 'E-Control Spritpreisrechner', stations: [...seen.values()] };
+  },
+
   // Verenigd Koninkrijk: open prijsfeeds van de ketens (CMA-regeling), prijzen in pence
   async GB() {
     const feeds = [

@@ -21,6 +21,7 @@ Web-app voor telefoon en computer die tankstations rond je locatie toont, gesort
 | Spanje | Geoportal Gasolineras (ministerie) | Werkt, elk uur bijgewerkt |
 | Verenigd Koninkrijk | open prijsfeeds van de ketens (Asda, Esso, Tesco, MFG, ...) | Werkt, elk uur bijgewerkt |
 | Italië | Osservaprezzi (MIMIT) | Gebouwd, bron nog niet bereikbaar vanaf GitHub |
+| Oostenrijk | Spritpreisrechner (E-Control), alleen de goedkoopste stations per regio | Elk uur bijgewerkt |
 | Noorwegen | link naar Drivstoffapp (geen open data) | Werkt |
 
 **Richtprijs in Zweden**: een GitHub Actions-taak (`.github/workflows/listprices.yml`) haalt drie keer per dag de landelijke listpris voor diesel op van St1, Circle K, Preem en OKQ8 (Circle K, Preem en OKQ8 alleen als prijs voor zakelijke tankkaarten) en schrijft die naar `listprices.json`. Stations van die ketens zonder melding tonen die als richtprijs (≈). Ingo, Tanka en onafhankelijke stations publiceren geen prijs.

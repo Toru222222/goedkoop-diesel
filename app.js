@@ -1,6 +1,6 @@
-import { countryInfo, geocode, reverseGeocode, fetchStations, fetchOfficialPrices } from './providers.js?v=9';
-import { latestReports, addReport, detectMode } from './store.js?v=9';
-import { readImageText, extractPrices } from './ocr.js?v=9';
+import { countryInfo, geocode, reverseGeocode, fetchStations, fetchOfficialPrices, LIVE_COUNTRIES } from './providers.js?v=10';
+import { latestReports, addReport, detectMode } from './store.js?v=10';
+import { readImageText, extractPrices } from './ocr.js?v=10';
 
 const $ = id => document.getElementById(id);
 const MAX_AGE_DAYS = 14; // oudere meldingen tellen niet mee
@@ -85,7 +85,7 @@ function setCountry(country) {
   state.country = country;
   const c = countryInfo(country);
   $('place').textContent = `📍 ${state.label}${c.name ? ' · ' + c.name : ''}`;
-  if (c.note) { $('source-note').hidden = false; $('source-note').textContent = c.note; }
+  $('source-note').hidden = false; $('source-note').textContent = noteText(c);
   showExternalLink();
   try { localStorage.setItem('diesel-last-place', JSON.stringify({ lat: state.lat, lon: state.lon, label: state.label, country })); } catch {}
 }
@@ -108,8 +108,8 @@ async function load() {
   $('best').hidden = true;
 
   const c = countryInfo(country);
-  $('source-note').hidden = !c.note;
-  $('source-note').textContent = c.note || '';
+  $('source-note').hidden = false;
+  $('source-note').textContent = noteText(c);
   showExternalLink();
 
   try {
@@ -190,8 +190,15 @@ function showListPriceNote(c, chainPrices) {
   if (!chainPrices.length) return;
   const parts = chainPrices.map(p => `${p.brand} ${formatPrice(p.price, state.country)}${p.date ? ' (' + shortDate(p.date) + ')' : ''}`);
   $('source-note').hidden = false;
-  $('source-note').textContent = [c.note,
+  $('source-note').textContent = [noteText(c),
     `Landelijke listpris diesel: ${parts.join(', ')}. Aan de pomp is het meestal 0,5 tot 1,5 kr goedkoper.`]
+    .filter(Boolean).join(' ');
+}
+
+// Uitleg over de prijsbron; in landen zonder open data ook waar wel live prijzen zijn.
+function noteText(c) {
+  if (c.live) return c.note;
+  return [c.note, `Live pompprijzen die vanzelf bijwerken heeft de app in: ${LIVE_COUNTRIES.join(', ')}. In andere landen komen prijzen van meldingen.`]
     .filter(Boolean).join(' ');
 }
 

@@ -16,16 +16,21 @@ export const COUNTRIES = {
   BE: { name: 'België', currency: 'EUR', unit: '€', min: 1, max: 3.5 },
   DE: { name: 'Duitsland', currency: 'EUR', unit: '€', min: 1, max: 3.5, provider: 'tankerkoenig',
         note: 'Duitsland: live prijzen via Tankerkönig (gratis API-sleutel nodig, zie README).' },
-  FR: { name: 'Frankrijk', currency: 'EUR', unit: '€', min: 1, max: 3.5, provider: 'opendata',
+  FR: { live: true, name: 'Frankrijk', currency: 'EUR', unit: '€', min: 1, max: 3.5, provider: 'opendata',
         note: 'Frankrijk: echte pompprijzen uit de open data van de Franse overheid.' },
-  ES: { name: 'Spanje', currency: 'EUR', unit: '€', min: 0.8, max: 3, provider: 'opendata',
+  ES: { live: true, name: 'Spanje', currency: 'EUR', unit: '€', min: 0.8, max: 3, provider: 'opendata',
         note: 'Spanje: echte pompprijzen uit de open data van het Spaanse ministerie.' },
   IT: { name: 'Italië', currency: 'EUR', unit: '€', min: 1, max: 3.5, provider: 'opendata',
         note: 'Italië: echte pompprijzen uit de open data van de Italiaanse overheid (dagelijks om 8 uur).' },
-  GB: { name: 'Verenigd Koninkrijk', currency: 'GBP', unit: '£', min: 1, max: 3, provider: 'opendata',
+  AT: { live: true, name: 'Oostenrijk', currency: 'EUR', unit: '€', min: 1, max: 3.5, provider: 'opendata',
+        note: 'Oostenrijk: echte pompprijzen van E-Control. Volgens de Oostenrijkse wet krijgen alleen de goedkoopste stations per regio een prijs.' },
+  GB: { live: true, name: 'Verenigd Koninkrijk', currency: 'GBP', unit: '£', min: 1, max: 3, provider: 'opendata',
         note: 'Verenigd Koninkrijk: echte pompprijzen uit de open prijsfeeds van de grote ketens.' },
 };
 export const DEFAULT_COUNTRY = { name: '', currency: '', unit: '', min: 0.3, max: 400 };
+
+// Landen waar de app zelf elk uur echte pompprijzen ophaalt.
+export const LIVE_COUNTRIES = Object.values(COUNTRIES).filter(c => c.live).map(c => c.name);
 
 export function countryInfo(code) {
   return COUNTRIES[code] || { ...DEFAULT_COUNTRY, name: code || 'onbekend' };
