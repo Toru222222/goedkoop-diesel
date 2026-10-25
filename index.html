@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0f766e">
   <title>Goedkoop Diesel</title>
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=10">
+  <link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
   <header class="top">
@@ -32,6 +32,7 @@
             <option value="50000">50 km</option>
           </select>
         </label>
+        <label class="toggle"><input id="no-toll" type="checkbox"> Route zonder tol</label>
         <span id="place" class="muted"></span>
       </div>
     </section>
@@ -49,7 +50,7 @@
   <footer class="foot muted">
     Stations: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>-bijdragers.
     Prijzen: gemeld door gebruikers, of open overheidsdata waar een land die heeft.
-    <span id="store-mode"></span> Versie 10.
+    <span id="store-mode"></span> Versie 11.
   </footer>
 
   <!-- Prijs melden / scannen -->
@@ -75,6 +76,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="app.js?v=10"></script>
+  <script type="module" src="app.js?v=11"></script>
 </body>
 </html>

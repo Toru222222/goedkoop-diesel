@@ -1,6 +1,6 @@
-import { countryInfo, geocode, reverseGeocode, fetchStations, fetchOfficialPrices, LIVE_COUNTRIES } from './providers.js?v=10';
-import { latestReports, addReport, detectMode } from './store.js?v=10';
-import { readImageText, extractPrices } from './ocr.js?v=10';
+import { countryInfo, geocode, reverseGeocode, fetchStations, fetchOfficialPrices, LIVE_COUNTRIES } from './providers.js?v=11';
+import { latestReports, addReport, detectMode } from './store.js?v=11';
+import { readImageText, extractPrices } from './ocr.js?v=11';
 
 const $ = id => document.getElementById(id);
 const MAX_AGE_DAYS = 14; // oudere meldingen tellen niet mee
@@ -220,8 +220,12 @@ function showExternalLink() {
 
 // ---- Weergave ----
 
+// Route in Google Maps. "Zonder tol": op Android via de navigatie-intent (avoid=t),
+// elders via de oude Maps-link met dirflg=t; beide vermijden tolwegen en bompenger.
 function navUrl(s) {
-  return `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}`;
+  if (!$('no-toll').checked) return `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}`;
+  if (/Android/i.test(navigator.userAgent)) return `google.navigation:q=${s.lat},${s.lon}&mode=d&avoid=t`;
+  return `https://maps.google.com/maps?daddr=${s.lat},${s.lon}&dirflg=t`;
 }
 
 function render() {
@@ -343,6 +347,11 @@ async function onSave(e) {
 $('btn-locate').addEventListener('click', locate);
 $('search-form').addEventListener('submit', search);
 $('radius').addEventListener('change', () => state.lat != null && load());
+try { $('no-toll').checked = localStorage.getItem('diesel-no-toll') === '1'; } catch {}
+$('no-toll').addEventListener('change', () => {
+  try { localStorage.setItem('diesel-no-toll', $('no-toll').checked ? '1' : '0'); } catch {}
+  render();
+});
 $('scan-input').addEventListener('change', onScan);
 $('report-form').addEventListener('submit', onSave);
 $('report-cancel').addEventListener('click', () => $('report-dialog').close());
