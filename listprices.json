@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-10-29T11:36:03.548Z",
+  "updatedAt": "2026-10-29T20:21:16.104Z",
   "prices": {
     "SE:St1": {
       "country": "SE",
@@ -9,37 +9,37 @@
       "price": 23.24,
       "date": "2026-10-29",
       "source": "https://st1.se/foretag/listpris",
-      "fetchedAt": "2026-10-29T11:36:01.596Z"
+      "fetchedAt": "2026-10-29T20:21:12.934Z"
     },
     "SE:Circle K": {
       "country": "SE",
       "brand": "Circle K",
       "currency": "SEK",
       "fuel": "diesel",
-      "price": 23.24,
-      "date": "2026-10-28",
+      "price": 23.39,
+      "date": "2026-10-29",
       "source": "https://www.circlek.se/foretag/drivmedel/priser",
-      "fetchedAt": "2026-10-29T11:36:02.432Z"
+      "fetchedAt": "2026-10-29T20:21:14.173Z"
     },
     "SE:Preem": {
       "country": "SE",
       "brand": "Preem",
       "currency": "SEK",
       "fuel": "diesel",
-      "price": 23.24,
-      "date": "2026-10-28",
+      "price": 23.39,
+      "date": "2026-10-29",
       "source": "https://www.preem.se/foretag/listpriser/",
-      "fetchedAt": "2026-10-29T11:36:03.090Z"
+      "fetchedAt": "2026-10-29T20:21:15.132Z"
     },
     "SE:OKQ8": {
       "country": "SE",
       "brand": "OKQ8",
       "currency": "SEK",
       "fuel": "diesel",
-      "price": 23.24,
+      "price": 23.39,
       "date": "2026-10-29",
       "source": "https://www.okq8.se/foretag/priser/",
-      "fetchedAt": "2026-10-29T11:36:03.548Z"
+      "fetchedAt": "2026-10-29T20:21:16.104Z"
     }
   }
 }
