@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-15T12:49:21.353Z",
+  "updatedAt": "2026-11-15T20:26:12.983Z",
   "prices": {
     "SE:St1": {
       "country": "SE",
@@ -9,7 +9,7 @@
       "price": 21.59,
       "date": "2026-11-15",
       "source": "https://st1.se/foretag/listpris",
-      "fetchedAt": "2026-11-15T12:49:19.425Z"
+      "fetchedAt": "2026-11-15T20:26:11.280Z"
     },
     "SE:Circle K": {
       "country": "SE",
@@ -19,7 +19,7 @@
       "price": 21.59,
       "date": "2026-11-12",
       "source": "https://www.circlek.se/foretag/drivmedel/priser",
-      "fetchedAt": "2026-11-15T12:49:20.198Z"
+      "fetchedAt": "2026-11-15T20:26:12.024Z"
     },
     "SE:Preem": {
       "country": "SE",
@@ -29,7 +29,7 @@
       "price": 21.59,
       "date": "2026-11-12",
       "source": "https://www.preem.se/foretag/listpriser/",
-      "fetchedAt": "2026-11-15T12:49:20.945Z"
+      "fetchedAt": "2026-11-15T20:26:12.567Z"
     },
     "SE:OKQ8": {
       "country": "SE",
@@ -39,7 +39,7 @@
       "price": 21.59,
       "date": "2026-11-12",
       "source": "https://www.okq8.se/foretag/priser/",
-      "fetchedAt": "2026-11-15T12:49:21.353Z"
+      "fetchedAt": "2026-11-15T20:26:12.983Z"
     }
   }
 }
